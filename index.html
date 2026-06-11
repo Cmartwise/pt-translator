@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1c3d28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PT Translator">
+<title>PT — Portuguese Translator</title>
+<style>
+:root {
+  --bg: #f2ede0; --surface: #ece6d4; --card: #faf7f0;
+  --forest: #1c3d28; --forest2: #2e6644; --leaf: #4db86a;
+  --leaf-bg: rgba(77,184,106,0.12); --leaf-border: rgba(77,184,106,0.35);
+  --gold: #c8881a; --gold2: #e8a820; --gold-bg: #fdf5df; --gold-border: rgba(200,136,26,0.3);
+  --earth: #7a4e2a; --earth-bg: rgba(122,78,42,0.08);
+  --urgent: #c04030; --urgent-bg: #fdf0ee;
+  --blue: #3a7abf; --blue-bg: rgba(58,122,191,0.1);
+  --purple: #7a5ca0; --purple-bg: rgba(122,92,160,0.1);
+  --teal: #3a8a8a; --teal-bg: rgba(58,138,138,0.1);
+  --text: #1a2e1a; --muted: #5a7055; --faint: #a0b89a;
+  --border: rgba(28,61,40,0.1); --shadow: 0 2px 8px rgba(28,61,40,0.08);
+  --radius: 14px; --radius-sm: 9px;
+  color-scheme: light;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:Georgia,'Times New Roman',serif;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+.app-header{
+  height:56px;background:var(--forest);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;flex-shrink:0;position:relative;overflow:hidden;
+}
+.app-header::after{content:'🌿';position:absolute;right:-4px;top:-8px;font-size:52px;opacity:.06;transform:rotate(15deg)}
+.header-title{font-size:16px;font-style:italic;color:var(--gold2);letter-spacing:.5px}
+.header-sub{font-size:10px;color:rgba(232,240,226,.4);font-family:monospace;letter-spacing:1px}
+
+/* ── MAIN SCROLL ── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px}
+
+/* ── INPUT AREA ── */
+.input-card{
+  background:var(--card);border-radius:var(--radius);padding:14px;
+  box-shadow:var(--shadow);margin-bottom:12px;
+}
+.input-label{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);font-family:monospace;margin-bottom:8px;display:block}
+.input-wrap{display:flex;gap:8px;align-items:flex-end}
+textarea{
+  flex:1;min-height:72px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);font-family:Georgia,serif;font-size:14px;
+  padding:10px 12px;resize:none;outline:none;line-height:1.5;
+  transition:border-color .2s;
+}
+textarea:focus{border-color:var(--leaf)}
+textarea::placeholder{color:var(--faint);font-style:italic}
+.translate-btn{
+  height:46px;padding:0 18px;border-radius:var(--radius-sm);border:none;
+  background:var(--forest);color:#e8f0e2;font-family:Georgia,serif;font-size:13px;
+  cursor:pointer;transition:background .2s;white-space:nowrap;flex-shrink:0;
+}
+.translate-btn:active{background:var(--forest2)}
+.translate-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── SECTION TITLE ── */
+.sec{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);
+  font-family:monospace;margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── TRANSLATION RESULT CARD ── */
+.result-card{
+  background:var(--forest);border-radius:var(--radius);padding:16px;
+  margin-bottom:10px;color:#e8f0e2;position:relative;overflow:hidden;
+}
+.result-card::after{content:'🌿';position:absolute;right:8px;bottom:-8px;font-size:56px;opacity:.07}
+.result-label{font-size:9px;letter-spacing:2px;opacity:.4;font-family:monospace;margin-bottom:4px}
+.result-pt{font-size:22px;font-style:italic;line-height:1.4;margin-bottom:6px;color:#e8f0e2}
+.result-phonetic{
+  font-size:13px;font-family:monospace;color:var(--gold2);
+  letter-spacing:.5px;margin-bottom:8px;
+}
+.result-en{font-size:11px;opacity:.5;font-style:italic}
+.colloquial-note{
+  margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);
+  font-size:11px;opacity:.55;line-height:1.5;
+}
+
+/* ── WORD BREAKDOWN ── */
+.word-grid{display:flex;flex-direction:column;gap:8px}
+.word-card{
+  background:var(--card);border-radius:var(--radius-sm);padding:12px;
+  box-shadow:var(--shadow);border-left:3px solid var(--leaf);
+}
+.word-card.verb{border-left-color:var(--gold2)}
+.word-card.noun{border-left-color:var(--leaf)}
+.word-card.adjective{border-left-color:var(--blue)}
+.word-card.adverb{border-left-color:var(--purple)}
+.word-card.preposition,.word-card.conjunction,.word-card.article{border-left-color:var(--faint)}
+.word-header{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.word-pt{font-size:17px;font-style:italic;color:var(--text)}
+.word-phonetic{font-size:11px;font-family:monospace;color:var(--gold);background:var(--gold-bg);
+  padding:2px 7px;border-radius:4px}
+.word-en{font-size:12px;color:var(--muted);font-style:italic}
+.word-chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px}
+.chip{
+  display:inline-block;font-size:8px;letter-spacing:.8px;text-transform:uppercase;
+  padding:2px 7px;border-radius:4px;font-family:monospace;white-space:nowrap;
+}
+.chip.verb{background:var(--gold-bg);color:var(--gold)}
+.chip.noun{background:var(--leaf-bg);color:var(--forest2)}
+.chip.adjective{background:var(--blue-bg);color:var(--blue)}
+.chip.adverb{background:var(--purple-bg);color:var(--purple)}
+.chip.pronoun,.chip.preposition,.chip.conjunction,.chip.article{background:var(--earth-bg);color:var(--earth)}
+.chip.gray{background:var(--surface);color:var(--muted)}
+.chip.tense{background:rgba(200,136,26,.08);color:var(--gold)}
+.chip.person{background:rgba(122,78,42,.08);color:var(--earth)}
+.chip.gender-m{background:var(--blue-bg);color:var(--blue)}
+.chip.gender-f{background:var(--purple-bg);color:var(--purple)}
+.word-detail{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.word-detail strong{color:var(--forest2);font-style:normal}
+.word-note{
+  margin-top:6px;padding:5px 8px;
+  background:var(--gold-bg);border-left:2px solid var(--gold-border);
+  border-radius:0 4px 4px 0;font-size:11px;color:var(--earth);line-height:1.5;
+  font-style:italic;
+}
+
+/* ── CULTURAL NOTE ── */
+.cultural-card{
+  background:var(--leaf-bg);border:1px solid var(--leaf-border);
+  border-radius:var(--radius-sm);padding:12px;
+  font-size:12px;color:var(--forest2);line-height:1.6;
+}
+.cultural-card::before{content:'🇵🇹 ';font-style:normal}
+
+/* ── SIMILAR PHRASES ── */
+.phrase-card{
+  background:var(--card);border-radius:var(--radius-sm);padding:11px 12px;
+  box-shadow:var(--shadow);margin-bottom:6px;
+}
+.phrase-pt{font-size:14px;font-style:italic;margin-bottom:2px}
+.phrase-phonetic{font-size:10px;font-family:monospace;color:var(--gold);margin-bottom:3px}
+.phrase-en{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:4px}
+.phrase-context{
+  font-size:10px;color:var(--forest2);background:var(--leaf-bg);
+  padding:3px 8px;border-radius:4px;display:inline-block;font-family:monospace;
+}
+
+/* ── LOADING ── */
+.loading{
+  text-align:center;padding:32px 16px;color:var(--muted);
+  font-style:italic;font-size:13px;
+}
+.loading-dots::after{content:'';animation:dots 1.4s infinite}
+@keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;padding:40px 20px;
+}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.empty-title{font-size:16px;font-style:italic;color:var(--muted);margin-bottom:6px}
+.empty-sub{font-size:12px;color:var(--faint)}
+
+/* ── ERROR ── */
+.error-card{
+  background:var(--urgent-bg);border:1px solid rgba(192,64,48,.2);
+  border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--urgent);
+}
+
+/* ── HISTORY PILLS ── */
+.history-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.history-pill{
+  padding:5px 10px;border-radius:20px;font-size:11px;font-family:monospace;
+  background:var(--surface);color:var(--muted);border:1px solid var(--border);
+  cursor:pointer;transition:all .15s;
+}
+.history-pill:active{background:var(--card);color:var(--forest)}
+
+/* ── SETUP SCREEN ── */
+
+</style>
+</head>
+<body>
+
+
+<div class="app-header">
+  <div>
+    <div class="header-title">🇵🇹 PT Translator</div>
+  </div>
+  <div class="header-sub">European Portuguese</div>
+</div>
+
+<div class="main" id="main">
+
+  <div class="input-card">
+    <span class="input-label">English → European Portuguese</span>
+    <div class="input-wrap">
+      <textarea id="input-text" placeholder="Type something to translate... e.g. 'Where is the nearest pharmacy?'"
+        onkeydown="handleKey(event)"></textarea>
+      <button class="translate-btn" id="translate-btn" onclick="doTranslate()">
+        Translate
+      </button>
+    </div>
+  </div>
+
+  <div id="history-row" class="history-row" style="display:none"></div>
+
+  <div id="output">
+    <div class="empty-state">
+      <div class="empty-icon">🌿</div>
+      <div class="empty-title">Ready to translate</div>
+      <div class="empty-sub">Type anything in English above — everyday phrases, questions, verbs, expressions</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'pt_translator_v1';
+const API_URL = 'https://zsgnggtwfxyqzvrnlaqg.supabase.co/functions/v1/translate';
+let history = [];
+
+// ── SETUP ──────────────────────────────────────────────────────────────────
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    history = s.history || [];
+    renderHistory();
+  } catch(e) {}
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ history }));
+  } catch(e) {}
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById('history-row');
+  if (!history.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = history.slice(-5).reverse().map(h =>
+    `<div class="history-pill" onclick="translateText(${JSON.stringify(h)})">${h.slice(0,28)}${h.length>28?'…':''}</div>`
+  ).join('');
+}
+
+// ── TRANSLATE ──────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) doTranslate();
+}
+
+function doTranslate() {
+  const text = document.getElementById('input-text').value.trim();
+  if (!text) return;
+  translateText(text);
+}
+
+async function translateText(text) {
+  document.getElementById('input-text').value = text;
+  document.getElementById('translate-btn').disabled = true;
+  document.getElementById('output').innerHTML = `
+    <div class="loading"><span class="loading-dots">Translating</span></div>`;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderResult(data);
+
+    // Save to history
+    if (!history.includes(text)) {
+      history = [...history.slice(-9), text];
+      saveSettings();
+      renderHistory();
+    }
+  } catch(e) {
+    document.getElementById('output').innerHTML = `
+      <div class="error-card">
+        <strong>Translation failed:</strong> ${e.message}<br>
+        <span style="font-size:10px;opacity:.7;margin-top:4px;display:block">
+          Check your Edge Function URL and that ANTHROPIC_API_KEY is set as a Supabase secret.
+        </span>
+      </div>`;
+  } finally {
+    document.getElementById('translate-btn').disabled = false;
+  }
+}
+
+// ── RENDER RESULT ──────────────────────────────────────────────────────────
+function renderResult(d) {
+  const TYPE_LABELS = {
+    verb:'Verb', noun:'Noun', adjective:'Adj', adverb:'Adv',
+    pronoun:'Pronoun', preposition:'Prep', conjunction:'Conj',
+    article:'Article', interjection:'Interj', other:'Word'
+  };
+
+  // Main translation card
+  let html = `
+    <div class="result-card">
+      <div class="result-label">European Portuguese</div>
+      <div class="result-pt">${escHtml(d.colloquial || d.translation)}</div>
+      <div class="result-phonetic">${escHtml(d.full_phonetic || '')}</div>
+      <div class="result-en">${escHtml(d.original)}</div>
+      ${d.translation && d.translation !== d.colloquial ? `
+        <div class="colloquial-note">
+          Formal: <em>${escHtml(d.translation)}</em>
+        </div>` : ''}
+    </div>`;
+
+  // Word breakdown
+  if (d.words && d.words.length) {
+    html += `<div class="sec">Word Breakdown</div><div class="word-grid">`;
+    d.words.forEach(w => {
+      const type = (w.type || 'other').toLowerCase();
+      const typeLabel = TYPE_LABELS[type] || type;
+      html += `<div class="word-card ${type}">`;
+      html += `<div class="word-header">
+        <span class="word-pt">${escHtml(w.pt)}</span>
+        ${w.phonetic ? `<span class="word-phonetic">${escHtml(w.phonetic)}</span>` : ''}
+        <span class="word-en">"${escHtml(w.en)}"</span>
+      </div>`;
+      html += `<div class="word-chips">
+        <span class="chip ${type}">${typeLabel}</span>`;
+      if (w.tense) html += `<span class="chip tense">${escHtml(w.tense)}</span>`;
+      if (w.person) html += `<span class="chip person">${escHtml(w.person)}</span>`;
+      if (w.gender) html += `<span class="chip gender-${w.gender === 'masculine' ? 'm' : 'f'}">${w.gender === 'masculine' ? '♂ masc' : '♀ fem'}</span>`;
+      html += `</div>`;
+      const details = [];
+      if (w.infinitive) details.push(`<strong>Infinitive:</strong> ${escHtml(w.infinitive)}`);
+      if (w.article) details.push(`<strong>Article:</strong> ${escHtml(w.article)}`);
+      if (details.length) html += `<div class="word-detail">${details.join(' &nbsp;·&nbsp; ')}</div>`;
+      if (w.note) html += `<div class="word-note">${escHtml(w.note)}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Cultural note
+  if (d.cultural_note) {
+    html += `<div class="sec">Cultural Context</div>
+      <div class="cultural-card">${escHtml(d.cultural_note)}</div>`;
+  }
+
+  // Similar phrases
+  if (d.similar_phrases && d.similar_phrases.length) {
+    html += `<div class="sec">Similar Phrases</div>`;
+    d.similar_phrases.forEach(p => {
+      html += `<div class="phrase-card">
+        <div class="phrase-pt">${escHtml(p.pt)}</div>
+        ${p.phonetic ? `<div class="phrase-phonetic">${escHtml(p.phonetic)}</div>` : ''}
+        <div class="phrase-en">${escHtml(p.en)}</div>
+        ${p.context ? `<span class="phrase-context">${escHtml(p.context)}</span>` : ''}
+      </div>`;
+    });
+  }
+
+  html += `<div style="height:20px"></div>`;
+  document.getElementById('output').innerHTML = html;
+  document.getElementById('main').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+loadSettings();
+</script>
+</body>
+</html>
