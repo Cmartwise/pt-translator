@@ -135,7 +135,7 @@ textarea::placeholder{color:var(--faint);font-style:italic}
   border-radius:var(--radius-sm);padding:12px;
   font-size:12px;color:var(--forest2);line-height:1.6;
 }
-.cultural-card::before{content:'🇵🇹 ';font-style:normal}
+.cultural-card::before{content:'';}
 
 /* ── SIMILAR PHRASES ── */
 .phrase-card{
@@ -172,15 +172,35 @@ textarea::placeholder{color:var(--faint);font-style:italic}
   border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--urgent);
 }
 
-/* ── DIRECTION TOGGLE ── */
-.dir-toggle{display:flex;gap:6px;margin-bottom:10px}
-.dir-btn{
-  padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);
-  background:var(--surface);color:var(--muted);font-size:11px;font-family:monospace;
-  cursor:pointer;transition:all .2s;letter-spacing:.5px;
+/* ── LANGUAGE PICKER ── */
+.lang-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.lang-select{
+  flex:1;padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--forest);font-size:11px;font-family:monospace;
+  cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7055'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  padding-right:26px;transition:border-color .2s;
 }
-.dir-btn.active{background:var(--forest);color:var(--gold2);border-color:var(--forest)}
-.dir-btn:not(.active):hover{border-color:var(--forest2);color:var(--forest)}
+.lang-select:focus{border-color:var(--leaf)}
+.swap-btn{
+  width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--muted);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .2s;
+}
+.swap-btn:hover{background:var(--forest);color:var(--gold2);border-color:var(--forest)}
+.swap-btn:active{transform:rotate(180deg)}
+/* ── SPEAK BUTTON ── */
+.speak-btn{
+  position:absolute;top:14px;right:14px;
+  width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08);color:rgba(232,240,226,.7);font-size:14px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.speak-btn:hover{background:rgba(255,255,255,.18);color:#e8f0e2}
+.speak-btn.speaking{background:rgba(200,136,26,.3);color:var(--gold2);border-color:var(--gold)}
 
 /* ── HISTORY PILLS ── */
 .history-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
@@ -203,18 +223,29 @@ textarea::placeholder{color:var(--faint);font-style:italic}
   <div>
     <div class="header-title">🇵🇹 PT Translator</div>
   </div>
-  <div class="header-sub">European Portuguese</div>
+  <div class="header-sub">EN · PT · ES · FR</div>
 </div>
 
 <div class="main" id="main">
 
   <div class="input-card">
-    <div class="dir-toggle">
-      <button class="dir-btn active" id="dir-en" onclick="setDirection('en_to_pt')">EN → PT</button>
-      <button class="dir-btn" id="dir-pt" onclick="setDirection('pt_to_en')">PT → EN</button>
+    <div class="lang-row">
+      <select class="lang-select" id="lang-from" onchange="onLangChange()">
+        <option value="en">English</option>
+        <option value="pt">Portuguese (PT)</option>
+        <option value="es">Spanish (ES)</option>
+        <option value="fr">French (FR)</option>
+      </select>
+      <button class="swap-btn" onclick="swapLangs()" title="Swap languages">⇄</button>
+      <select class="lang-select" id="lang-to" onchange="onLangChange()">
+        <option value="en">English</option>
+        <option value="pt" selected>Portuguese (PT)</option>
+        <option value="es">Spanish (ES)</option>
+        <option value="fr">French (FR)</option>
+      </select>
     </div>
     <div class="input-wrap">
-      <textarea id="input-text" placeholder="Type something in English... e.g. 'Where is the nearest pharmacy?'"
+      <textarea id="input-text" placeholder="Type something in English…"
         onkeydown="handleKey(event)"></textarea>
       <button class="translate-btn" id="translate-btn" onclick="doTranslate()">
         Translate
@@ -235,49 +266,104 @@ textarea::placeholder{color:var(--faint);font-style:italic}
 </div>
 
 <script>
-const STORAGE_KEY = 'pt_translator_v2';
+const STORAGE_KEY = 'pt_translator_v3';
 const API_URL = 'https://zsgnggtwfxyqzvrnlaqg.supabase.co/functions/v1/translate';
 
-// Each history item: { text, dir }
-let history = [];
-let direction = 'en_to_pt'; // 'en_to_pt' | 'pt_to_en'
+const LANG_NAMES  = { en:'English', pt:'Portuguese (PT)', es:'Spanish (ES)', fr:'French (FR)' };
+const LANG_FLAGS  = { en:'🇬🇧', pt:'🇵🇹', es:'🇪🇸', fr:'🇫🇷' };
+const LANG_BCP47  = { en:'en-GB', pt:'pt-PT', es:'es-ES', fr:'fr-FR' };
+const LANG_HINTS  = {
+  en: "Type in English… e.g. 'Where is the nearest pharmacy?'",
+  pt: "Escreva em Português… ex. 'Onde fica a farmácia mais próxima?'",
+  es: "Escribe en español… ej. '¿Dónde está la farmacia más cercana?'",
+  fr: "Écrivez en français… ex. 'Où est la pharmacie la plus proche ?'"
+};
+
+let langFrom = 'en';
+let langTo   = 'pt';
+let history  = [];
+let lastTranslation = '';
 
 // ── SETUP ──────────────────────────────────────────────────────────────────
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    history = (s.history || []).filter(h => h && h.text); // guard against old string format
-    if (s.direction) setDirection(s.direction, false);
+    history = (s.history || []).filter(h => h && h.text);
+    if (s.langFrom) langFrom = s.langFrom;
+    if (s.langTo)   langTo   = s.langTo;
+    syncSelects();
     renderHistory();
   } catch(e) {}
 }
 
 function saveSettings() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ history, direction }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ history, langFrom, langTo }));
   } catch(e) {}
 }
 
-// ── DIRECTION TOGGLE ───────────────────────────────────────────────────────
-function setDirection(dir, clearOutput = true) {
-  direction = dir;
-  document.getElementById('dir-en').classList.toggle('active', dir === 'en_to_pt');
-  document.getElementById('dir-pt').classList.toggle('active', dir === 'pt_to_en');
-  document.getElementById('input-text').placeholder = dir === 'en_to_pt'
-    ? "Type something in English… e.g. 'Where is the nearest pharmacy?'"
-    : "Escreva em Português… ex. 'Onde fica a farmácia mais próxima?'";
-  if (clearOutput) {
-    document.getElementById('input-text').value = '';
-    document.getElementById('output').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🌿</div>
-        <div class="empty-title">Ready to translate</div>
-        <div class="empty-sub">${dir === 'en_to_pt'
-          ? 'Type anything in English above'
-          : 'Escreva algo em Português acima'}</div>
-      </div>`;
+function syncSelects() {
+  document.getElementById('lang-from').value = langFrom;
+  document.getElementById('lang-to').value   = langTo;
+  document.getElementById('input-text').placeholder = LANG_HINTS[langFrom] || ('Type in ' + LANG_NAMES[langFrom] + '…');
+}
+
+// ── LANGUAGE SELECTION ─────────────────────────────────────────────────────
+function onLangChange() {
+  const newFrom = document.getElementById('lang-from').value;
+  const newTo   = document.getElementById('lang-to').value;
+  // Prevent same language on both sides — auto-swap the other
+  if (newFrom === newTo) {
+    if (newFrom !== langFrom) {
+      // "from" changed to match "to" — flip "to" to old "from"
+      langTo = langFrom;
+      document.getElementById('lang-to').value = langTo;
+    } else {
+      // "to" changed to match "from" — flip "from" to old "to"
+      langFrom = langTo;
+      document.getElementById('lang-from').value = langFrom;
+    }
   }
+  langFrom = document.getElementById('lang-from').value;
+  langTo   = document.getElementById('lang-to').value;
+  syncSelects();
+  clearOutput();
   saveSettings();
+}
+
+function swapLangs() {
+  [langFrom, langTo] = [langTo, langFrom];
+  syncSelects();
+  clearOutput();
+  saveSettings();
+}
+
+function clearOutput() {
+  document.getElementById('input-text').value = '';
+  document.getElementById('output').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🌿</div>
+      <div class="empty-title">Ready to translate</div>
+      <div class="empty-sub">Type in ${LANG_NAMES[langFrom]} above</div>
+    </div>`;
+}
+
+// ── TEXT-TO-SPEECH ─────────────────────────────────────────────────────────
+function speakTranslation() {
+  if (!lastTranslation) return;
+  const btn = document.getElementById('speak-btn');
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    btn && btn.classList.remove('speaking');
+    return;
+  }
+  const utt = new SpeechSynthesisUtterance(lastTranslation);
+  utt.lang = LANG_BCP47[langTo] || 'en-GB';
+  utt.rate = 0.88;
+  utt.onstart = () => btn && btn.classList.add('speaking');
+  utt.onend   = () => btn && btn.classList.remove('speaking');
+  utt.onerror = () => btn && btn.classList.remove('speaking');
+  window.speechSynthesis.speak(utt);
 }
 
 // ── HISTORY ────────────────────────────────────────────────────────────────
@@ -285,20 +371,20 @@ function renderHistory() {
   const el = document.getElementById('history-row');
   if (!history.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
-  // Show last 5, newest first, with direction badge
   const recent = history.slice(-5).reverse();
   el.innerHTML = recent.map((h, i) => {
-    const label = h.text.slice(0,26) + (h.text.length > 26 ? '…' : '');
-    const badge = h.dir === 'pt_to_en' ? ' ⇄' : '';
-    return `<div class="history-pill" onclick="replayHistory(${history.length - 1 - i})">${label}${badge}</div>`;
+    const label = h.text.slice(0,22) + (h.text.length > 22 ? '…' : '');
+    const badge = (LANG_FLAGS[h.from || 'en'] || '?') + '→' + (LANG_FLAGS[h.to || 'pt'] || '?');
+    return `<div class="history-pill" onclick="replayHistory(${history.length - 1 - i})" title="${h.text}">${badge} ${label}</div>`;
   }).join('');
 }
 
 function replayHistory(idx) {
   const item = history[idx];
   if (!item) return;
-  // Restore direction first (without clearing output), then translate
-  if (item.dir !== direction) setDirection(item.dir, false);
+  langFrom = item.from || 'en';
+  langTo   = item.to   || 'pt';
+  syncSelects();
   translateText(item.text);
 }
 
@@ -316,24 +402,23 @@ function doTranslate() {
 async function translateText(text) {
   document.getElementById('input-text').value = text;
   document.getElementById('translate-btn').disabled = true;
-  document.getElementById('output').innerHTML = `
-    <div class="loading"><span class="loading-dots">Translating</span></div>`;
+  document.getElementById('output').innerHTML =
+    '<div class="loading"><span class="loading-dots">Translating</span></div>';
 
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, direction })
+      body: JSON.stringify({ text, fromLang: langFrom, toLang: langTo })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderResult(data);
 
-    // Save to history (deduplicate by text+dir pair)
-    const exists = history.some(h => h.text === text && h.dir === direction);
+    const exists = history.some(h => h.text === text && h.from === langFrom && h.to === langTo);
     if (!exists) {
-      history = [...history.slice(-9), { text, dir: direction }];
+      history = [...history.slice(-9), { text, from: langFrom, to: langTo }];
       saveSettings();
       renderHistory();
     }
@@ -342,7 +427,7 @@ async function translateText(text) {
       <div class="error-card">
         <strong>Translation failed:</strong> ${e.message}<br>
         <span style="font-size:10px;opacity:.7;margin-top:4px;display:block">
-          Check your Edge Function URL and that ANTHROPIC_API_KEY is set as a Supabase secret.
+          Redeploy the Edge Function with the updated translate-edge-function.ts — it now supports multiple languages.
         </span>
       </div>`;
   } finally {
@@ -351,32 +436,32 @@ async function translateText(text) {
 }
 
 // ── RENDER RESULT ──────────────────────────────────────────────────────────
-// Section order: Translation → Cultural Context → Similar Phrases → Word Breakdown
 function renderResult(d) {
   const TYPE_LABELS = {
     verb:'Verb', noun:'Noun', adjective:'Adj', adverb:'Adv',
     pronoun:'Pronoun', preposition:'Prep', conjunction:'Conj',
     article:'Article', interjection:'Interj', other:'Word'
   };
-  const isPtToEn = direction === 'pt_to_en';
+  const toLangName = LANG_NAMES[langTo] || langTo;
+  const flag = LANG_FLAGS[langTo] || '🌐';
+  lastTranslation = d.colloquial || d.translation || '';
 
   // ── 1. Main translation card ──
   let html = `
     <div class="result-card">
-      <div class="result-label">${isPtToEn ? 'English' : 'European Portuguese'}</div>
+      <button class="speak-btn" id="speak-btn" onclick="speakTranslation()" title="Listen">🔊</button>
+      <div class="result-label">${toLangName}</div>
       <div class="result-pt">${escHtml(d.colloquial || d.translation)}</div>
-      ${!isPtToEn && d.full_phonetic ? `<div class="result-phonetic">${escHtml(d.full_phonetic)}</div>` : ''}
+      ${d.full_phonetic ? `<div class="result-phonetic">${escHtml(d.full_phonetic)}</div>` : ''}
       <div class="result-en">${escHtml(d.original)}</div>
       ${d.translation && d.translation !== d.colloquial ? `
-        <div class="colloquial-note">
-          ${isPtToEn ? 'Literal:' : 'Formal:'} <em>${escHtml(d.translation)}</em>
-        </div>` : ''}
+        <div class="colloquial-note">Formal: <em>${escHtml(d.translation)}</em></div>` : ''}
     </div>`;
 
   // ── 2. Cultural Context ──
   if (d.cultural_note) {
     html += `<div class="sec">Cultural Context</div>
-      <div class="cultural-card">${escHtml(d.cultural_note)}</div>`;
+      <div class="cultural-card">${flag} ${escHtml(d.cultural_note)}</div>`;
   }
 
   // ── 3. Similar Phrases ──
@@ -398,21 +483,20 @@ function renderResult(d) {
     d.words.forEach(w => {
       const type = (w.type || 'other').toLowerCase();
       const typeLabel = TYPE_LABELS[type] || type;
-      html += `<div class="word-card ${type}">`;
-      html += `<div class="word-header">
-        <span class="word-pt">${escHtml(w.pt)}</span>
-        ${w.phonetic ? `<span class="word-phonetic">${escHtml(w.phonetic)}</span>` : ''}
-        <span class="word-en">"${escHtml(w.en)}"</span>
-      </div>`;
-      html += `<div class="word-chips">
-        <span class="chip ${type}">${typeLabel}</span>`;
-      if (w.tense) html += `<span class="chip tense">${escHtml(w.tense)}</span>`;
+      html += `<div class="word-card ${type}">
+        <div class="word-header">
+          <span class="word-pt">${escHtml(w.pt)}</span>
+          ${w.phonetic ? `<span class="word-phonetic">${escHtml(w.phonetic)}</span>` : ''}
+          <span class="word-en">"${escHtml(w.en)}"</span>
+        </div>
+        <div class="word-chips"><span class="chip ${type}">${typeLabel}</span>`;
+      if (w.tense)  html += `<span class="chip tense">${escHtml(w.tense)}</span>`;
       if (w.person) html += `<span class="chip person">${escHtml(w.person)}</span>`;
-      if (w.gender) html += `<span class="chip gender-${w.gender === 'masculine' ? 'm' : 'f'}">${w.gender === 'masculine' ? '♂ masc' : '♀ fem'}</span>`;
+      if (w.gender) html += `<span class="chip gender-${w.gender==='masculine'?'m':'f'}">${w.gender==='masculine'?'♂ masc':'♀ fem'}</span>`;
       html += `</div>`;
       const details = [];
       if (w.infinitive) details.push(`<strong>Infinitive:</strong> ${escHtml(w.infinitive)}`);
-      if (w.article) details.push(`<strong>Article:</strong> ${escHtml(w.article)}`);
+      if (w.article)    details.push(`<strong>Article:</strong> ${escHtml(w.article)}`);
       if (details.length) html += `<div class="word-detail">${details.join(' &nbsp;·&nbsp; ')}</div>`;
       if (w.note) html += `<div class="word-note">${escHtml(w.note)}</div>`;
       html += `</div>`;
@@ -427,11 +511,7 @@ function renderResult(d) {
 
 function escHtml(s) {
   if (!s) return '';
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 loadSettings();
